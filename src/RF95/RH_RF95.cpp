@@ -109,7 +109,7 @@ bool RH_RF95::init()
     // No Sync Words in LORA mode.
    // setModemConfig(Bw125Cr45Sf128); // Radio default
     setModemConfig(Bw125Cr48Sf512);
-   // setModemConfig(Bw125Cr48Sf4096); // slow and reliable?
+    //setModemConfig(Bw125Cr48Sf4096); // slow and reliable?
     setPreambleLength(8); // Default is 8
     // An innocuous ISM frequency, same as RF22's
     setFrequency(915.0);

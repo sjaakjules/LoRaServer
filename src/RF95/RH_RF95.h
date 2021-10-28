@@ -542,6 +542,7 @@ public:
 	Bw31_25Cr48Sf512,	   ///< Bw = 31.25 kHz, Cr = 4/8, Sf = 512chips/symbol, CRC on. Slow+long range
 	Bw125Cr48Sf4096,           ///< Bw = 125 kHz, Cr = 4/8, Sf = 4096chips/symbol, CRC on. Slow+long range
     Bw125Cr48Sf512,
+    Bw500Cr45Sf512
     } ModemConfigChoice;
 
     /// Constructor. You can have multiple instances, but each instance must have its own

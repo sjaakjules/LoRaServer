@@ -3,7 +3,7 @@
 /******************************************************/
 
 #include "Particle.h"
-#line 1 "c:/Users/Gladys/Documents/Repos/Particles/LoRa_Test2/Server/src/Server.ino"
+#line 1 "x:/LoRa_Test2/Server/src/Server.ino"
 // rf95_server.pde
 // -*- mode: C++ -*-
 // Example sketch showing how to create a simple messageing server
@@ -26,36 +26,59 @@
 
 #include <SPI.h>
 #include <RF95/RH_RF95.h>
+#include "SerialBufferRK.h"
 
 // Singleton instance of the radio driver
 void updateSender();
 void setup();
 void loop();
+void TryGetPhoto();
+void TrySendImage();
 void TrySendQue();
 void TryGetMessages();
-#line 25 "c:/Users/Gladys/Documents/Repos/Particles/LoRa_Test2/Server/src/Server.ino"
+#line 26 "x:/LoRa_Test2/Server/src/Server.ino"
 RH_RF95 rf95;
 String WebHookName = "OwlNode_System01"; // Webhook name set within particle console.
+String ImgHookName = "Img_Upload_01";
 //RH_RF95 rf95(5, 2); // Rocket Scream Mini Ultra Pro with the RFM95W
 //RH_RF95 rf95(8, 3); // Adafruit Feather M0 with RFM95
 
 // Need this on Arduino Zero with SerialUSB port (eg RocketScream Mini Ultra Pro)
 //#define Serial SerialUSB
-const int queLength = 100;
+const int queLength = 5;
 String messageQue[queLength];
 int iSending = 0;
 int iReceiving = 0;
-long long lastSent;
+long long lastSent; // seconds
 bool readyToSend;
 bool haveSentall = false;
 int led = D7;
 
+int turnOnPin = D0;
+int activePin = D1;
+
+float minForPhoto = 10;
+long long lastPhoto;
+
+const int imgSize = 30720;
+const int imgMessageSize = 605;
+uint8_t lastImage[imgSize];
+char imgMessage[imgMessageSize];
+uint32_t imgIndex = 0;
+bool haveImage = false;
+bool sentPartImage = false;
+int partCount = 0;
+int imageCount = 0;
+
+SerialBuffer<1024> serBuf(Serial1);
+int totalReceived = 0;
 
 Timer timer(1000, updateSender);
 
-void updateSender(){
+void updateSender()
+{
   //if(readyToSend)
-    //Serial.println("Ready to send heartbeat");
+  //Serial.println("Ready to send heartbeat");
   readyToSend = true;
 }
 void setup()
@@ -66,16 +89,20 @@ void setup()
   //  digitalWrite(4, HIGH);
 
   pinMode(led, OUTPUT);
+  pinMode(activePin, INPUT);
+  Serial1.begin(1000000, SERIAL_8N1);
+  serBuf.setup();
+
   Serial.begin(9600);
   //while (!Serial)
   //  ; // Wait for serial port to be available
   delay(1000);
   if (!rf95.init())
     Serial.println("init failed");
-  else 
+  else
   {
     rf95.setFrequency(915);
-    rf95.setTxPower(23,false);
+    rf95.setTxPower(23, false);
   }
   timer.start();
   // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
@@ -90,21 +117,89 @@ void setup()
   // Failure to do that will result in extremely low transmit powers.
   //  driver.setTxPower(14, true);
 
-  
-  Log.info("Max lora message length is: "+ String(rf95.maxMessageLength()));
+  Log.info("Max lora message length is: " + String(rf95.maxMessageLength()));
   Log.info("Finished Setup loop.");
   Log.info("************************");
   lastSent = Time.now();
+  lastPhoto = Time.now();
 }
 
 void loop()
 {
+  TryGetPhoto();
   TryGetMessages();
   // Try Send from que
   TrySendQue();
+  TrySendImage();
   // Try get messages.
   TryGetMessages();
 }
+
+void TryGetPhoto()
+{
+  if ((Time.now() - lastPhoto) > int(minForPhoto * 60))
+  {
+    pinMode(turnOnPin, OUTPUT);
+    delay(100);
+    digitalWrite(turnOnPin, LOW);
+    delay(1000);
+    pinMode(turnOnPin, INPUT);
+    delay(100);
+    pinMode(turnOnPin, PIN_MODE_NONE);
+    delay(100);
+    // delay and get tx data from serial.
+    lastPhoto = Time.now();
+  }
+  while (true)
+  {
+    int8_t c = serBuf.read();
+    if (c < 0)
+    {
+      if(totalReceived>0)
+        {
+          Log.info("Recieved image " + String(totalReceived) + " bytes large./n");
+          totalReceived = 0;
+          imgIndex = 0;
+          haveImage = true;
+        }
+      break;
+    }
+    if (!haveImage)
+    {
+      Serial.print("Recieved byte " + String(c));
+      lastImage[imgIndex] = c;      
+    }
+    totalReceived++;
+  }
+}
+
+void TrySendImage(){
+  if (readyToSend && haveSentall&& haveImage)
+  {
+    for (size_t i = 0; i < imgMessageSize; i++)
+    {
+      if (imgIndex==imgSize)
+      {
+        imgMessage[i] = 0;
+      }
+      else if (imgIndex>imgSize)
+      {
+        imgMessage[i] = 255;
+      }
+      else
+      {
+        imgMessage[i] = lastImage[imgIndex];
+        imgIndex++;
+      }
+    }
+    messageQue[iReceiving] = "{\"Im\":" + String(imgMessage)+",\"Ii\":"+String(imageCount)+",\"Ip\":"+String(partCount)+"}";
+    iReceiving++;
+    partCount++;
+    imageCount++;
+    sentPartImage = true;
+  }
+}
+
 void TrySendQue()
 {
   if (iSending != iReceiving && readyToSend)
@@ -127,22 +222,31 @@ void TrySendQue()
     {
       haveSentall = true;
       Serial.println("\nSENT ALL\n");
+      if (sentPartImage)
+      {
+        Serial.println("\nSENT ALL IMAGE MESSAGE\n");
+        sentPartImage=false;
+        haveImage = false;
+        partCount = 0;
+        imgIndex=0;
+      }
+      
     }
-    
-  }else{
+  }
+  else
+  {
     if (iReceiving != 0)
     {
       haveSentall = false;
-     // Serial.println("\nSENT ALL\n");
+      // Serial.println("\nSENT ALL\n");
     }
   }
-  
 }
 void TryGetMessages()
 {
   if (rf95.available())
   {
-    
+
     // Should be a message for us now
     uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
     uint8_t len = sizeof(buf);
@@ -167,7 +271,7 @@ void TryGetMessages()
         {
           msgRcived.replace("Dv", "Dd");
           msgRcived.remove(msgRcived.length() - 1);
-          msgRcived.concat(",\"Si\": \"" + String(rf95.lastRssi())+"\" ");
+          msgRcived.concat(",\"Si\": \"" + String(rf95.lastRssi()) + "\" ");
           msgRcived.concat(",\"Dv\": \"Server01\" }");
           messageQue[iReceiving] = String(msgRcived);
           iReceiving++;
@@ -178,11 +282,11 @@ void TryGetMessages()
           // Send a reply
 
           sender.concat(' ');
-          char dataMsg[sender.length()+1];
+          char dataMsg[sender.length() + 1];
           sender.toCharArray(dataMsg, sender.length());
 
-          uint8_t data[sender.length()+1];
-          for (size_t i = 0; i < sender.length()+1; i++)
+          uint8_t data[sender.length() + 1];
+          for (size_t i = 0; i < sender.length() + 1; i++)
           {
             data[i] = uint8_t(dataMsg[i]);
           }

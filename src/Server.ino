@@ -40,13 +40,19 @@ bool readyToSend;
 bool haveSentall = false;
 int led = D7;
 
-bool inDebugMode = true;
+
+
+bool inDebugMode = false;
 
 int turnOnPin = D0;
 int activePin = D1;
 
 float minForPhoto = 10;
 long long lastPhoto;
+
+int nSignals = 0;
+String message = "No signal received";
+
 
 //const int imgSize = 30720;
 //const int imgMessageSize = 1;
@@ -92,6 +98,12 @@ void setup()
   {
     rf95.setFrequency(915);
     rf95.setTxPower(23, false);
+  }
+  
+  Particle.variable("messagecount", &nSignals, INT);
+  if (Particle.variable("message", message, STRING) == false)
+  {
+      // variable not registered!
   }
   timer.start();
   // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
@@ -219,6 +231,7 @@ void TrySendQue()
     {
       haveSentall = true;
       Serial.println("\nSENT ALL\n");
+      nSignals = 0;
       /*
       if (sentPartImage)
       {
@@ -281,6 +294,9 @@ void TryGetMessages()
       Serial.println("got request: ");
       Serial.println((char *)buf);
       String newMsg = String((char *)buf);
+
+      message = String((char *)buf);
+      nSignals+=1;
 
       int msgStart = newMsg.indexOf("{");
       int msgEnd = newMsg.indexOf("}");

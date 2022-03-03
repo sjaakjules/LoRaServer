@@ -9,7 +9,7 @@
         "xstring": "cpp",
         "xutility": "cpp"
     },
-    "particle.targetDevice": "Tester02",
+    "particle.targetDevice": "Tester04",
     "particle.firmwareVersion": "2.1.0",
     "particle.targetPlatform": "photon"
 }

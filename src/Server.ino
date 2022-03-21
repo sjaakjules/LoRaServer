@@ -100,11 +100,11 @@ void setup()
     rf95.setTxPower(23, false);
   }
   
-  Particle.variable("messagecount", &nSignals, INT);
-  if (Particle.variable("message", message, STRING) == false)
-  {
+  //Particle.variable("messagecount", &nSignals, INT);
+  //if (Particle.variable("message", message, STRING) == false)
+  //{
       // variable not registered!
-  }
+  //}
   timer.start();
   // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
 
@@ -294,8 +294,9 @@ void TryGetMessages()
       Serial.println("got request: ");
       Serial.println((char *)buf);
       String newMsg = String((char *)buf);
+      Serial.println(newMsg);
 
-      message = String((char *)buf);
+      //message = String((char *)buf);
       nSignals+=1;
 
       int msgStart = newMsg.indexOf("{");

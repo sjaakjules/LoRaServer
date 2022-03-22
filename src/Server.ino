@@ -294,7 +294,7 @@ void TryGetMessages()
       Serial.println("got request: ");
       Serial.println((char *)buf);
       String newMsg = String((char *)buf);
-      Serial.println(newMsg);
+      //Serial.println(newMsg);
 
       //message = String((char *)buf);
       nSignals+=1;
@@ -304,15 +304,29 @@ void TryGetMessages()
       if (msgStart > 0 && msgEnd > 0)
       {
         String sender = newMsg.substring(0, msgStart);
-        Serial.println(sender);
+        //Serial.println(sender);
         String msgRcived = newMsg.substring(msgStart, msgEnd + 1);
-        Serial.println(msgRcived);
+        //Serial.println(msgRcived);
 
         if (sender.length() > 0 && msgRcived.length() > 0)
         {
           msgRcived.replace("Dv", "Dd");
           msgRcived.remove(msgRcived.length() - 1);
           msgRcived.concat(",\"Si\": \"" + String(rf95.lastRssi()) + "\" ");
+
+          float dh = getMessage(msgRcived,"Dh").toFloat();
+          int zone = getMessage(msgRcived,"Zo").toInt();
+          int year = getMessage(msgRcived,"Yr").toInt();
+          
+          time_t sensorTime = getTimeFromDecimal(year,zone, dh);
+
+          msgRcived.concat(",\"Mo\": \"" + String(Time.month(sensorTime)) + "\" ");
+          msgRcived.concat(",\"Da\": \"" + String(Time.day(sensorTime)) + "\" ");
+          msgRcived.concat(",\"Hr\": \"" + String(Time.hour(sensorTime)) + "\" ");
+          msgRcived.concat(",\"Mi\": \"" + String(Time.minute(sensorTime)) + "\" ");
+          msgRcived.concat(",\"Sc\": \"" + String(Time.second(sensorTime)) + "\" ");
+
+
           msgRcived.concat(",\"Dv\": \"Server01\" }");
           messageQue[iReceiving] = String(msgRcived);
           iReceiving++;
@@ -356,4 +370,84 @@ void TryGetMessages()
     }
     Serial.println("");
   }
+}
+
+String getMessage(String msgRcived, String item){
+
+  int dh_start = msgRcived.indexOf(item);
+  int dh_Fin = msgRcived.indexOf(",",dh_start);
+  String dh_string = msgRcived.substring(dh_start+4,dh_Fin);
+  Serial.println(msgRcived.substring(dh_start+4,dh_Fin));
+  return dh_string;
+  
+}
+
+time_t getTimeFromDecimal(float Dh_time)
+{
+  intmax_t secEpoc_Now = Time.now();
+  float DhYr_Now = getDecimalHr(secEpoc_Now);
+  intmax_t secYr_Now = DhYr_Now * 3600;
+  intmax_t secYr_time = Dh_time * 3600;
+  intmax_t secEPOC_time = secEpoc_Now - secYr_Now + secYr_time;
+  time_t timeOut = secEPOC_time;
+
+  return timeOut;
+}
+
+time_t getTimeFromDecimal(int year , int zone, float Dh_time)
+{
+  int additionalSeconds = 0;
+  if (year > 2020)
+  {
+    additionalSeconds = floor((year - 2021) / 4 + 1) * 86400;
+  }
+  long secStartOfYear = 1546300800 + (year - 2019) * 31536000 + additionalSeconds;
+  long secDhtime = Dh_time * 3600 + zone * 3600;
+  //long diffFromSoY = secFromEpoc - secStartOfYear;
+
+  intmax_t secEpoc_Now = Time.now();
+  float DhYr_Now = getDecimalHr(secEpoc_Now);
+  intmax_t secYr_Now = DhYr_Now * 3600;
+  intmax_t secYr_time = Dh_time * 3600;
+  //intmax_t secEPOC_time = secEpoc_Now - secYr_Now + secYr_time;
+
+  intmax_t secEPOC_time = secDhtime + secStartOfYear;
+  time_t timeOut = secEPOC_time;
+
+  return timeOut;
+}
+
+float getDecimalHr()
+{
+  //Log.info("Getting decimal hours for now.");
+  int year = Time.year();
+  long secFromEpoc = Time.now();
+  int additionalSeconds = 0;
+  if (year > 2020)
+  {
+    additionalSeconds = floor((year - 2021) / 4 + 1) * 86400;
+  }
+  long secStartOfYear = 1546300800 + (year - 2019) * 31536000 + additionalSeconds;
+  long diffFromSoY = secFromEpoc - secStartOfYear;
+  float hrs = diffFromSoY * 1.0 / 3600.0;
+
+  return hrs;
+}
+
+
+float getDecimalHr(time_t timeIn)
+{
+  //Log.info("Calculating Dh from %d seconds", (intmax_t)time);
+  int year = Time.year(timeIn);
+  long secFromEpoc = (intmax_t)timeIn;
+  int additionalSeconds = 0;
+  if (year > 2020)
+  {
+    additionalSeconds = floor((year - 2021) / 4 + 1) * 86400;
+  }
+  long secStartOfYear = 1546300800 + (year - 2019) * 31536000 + additionalSeconds;
+  //Log.info("Seconds for the start of year: " + String(secStartOfYear));
+  long diffFromSoY = secFromEpoc - secStartOfYear;
+  float hrs = diffFromSoY * 1.0 / 3600.0;
+  return hrs;
 }

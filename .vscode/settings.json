@@ -7,9 +7,10 @@
         "initializer_list": "cpp",
         "xmemory": "cpp",
         "xstring": "cpp",
-        "xutility": "cpp"
+        "xutility": "cpp",
+        "chrono": "cpp"
     },
-    "particle.targetDevice": "Tester04",
+    "particle.targetDevice": "Tester03",
     "particle.firmwareVersion": "3.0.0",
     "particle.targetPlatform": "photon"
 }

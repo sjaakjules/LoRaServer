@@ -20,8 +20,12 @@ PROGMEM static const RH_RF95::ModemConfig MODEM_CONFIG_TABLE[] =
     { 0x92,   0x74,    0x00}, // Bw500Cr45Sf128
     { 0x48,   0x94,    0x00}, // Bw31_25Cr48Sf512
     { 0x78,   0xc4,    0x00}, // Bw125Cr48Sf4096
-    { 0x78,   0x94,    0x00}, // Bw125Cr48Sf512
-    { 0x92,   0x94,    0x00} // Bw500Cr45Sf512
+    { 0x78,   0x94,    0x00}, // Bw125Cr48Sf512 
+    { 0x92,   0x94,    0x00} // Bw500Cr45Sf512  <- used in system gardens
+    // Systems garden settings:
+    // Bandwidth 500
+    // (RegModulationCfg) Spreading factor 9 = 512 chips/symbol <- -12.5 dB   --RegModemConfig2
+    // (RegTxCfg1) 1 with cyclic coding rate 4/5 with overhead ration 1.25
     
 };
 
